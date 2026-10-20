@@ -1,277 +1,208 @@
 'use client';
 
 import { useState } from 'react';
-import { CLOSE_HOUR, fmtDateHuman, hourSlots, pad } from '@/lib/calendar-helpers';
-import type { AvailabilitySlot } from '@/lib/types';
+import { OPEN_HOUR, CLOSE_HOUR } from '@/lib/types';
 
 interface Props {
-  dateKeyStr: string;
-  initialHour: number;
-  existingSlots: AvailabilitySlot[];
+  date: string;
+  preselectedHour?: number;
   onClose: () => void;
-  onCreated: () => void;
+  onSuccess: () => void;
 }
 
-interface GuestEmailPreview {
-  to: string;
-  subject: string;
-  body: string;
-}
-
-export default function ReservationModal({
-  dateKeyStr,
-  initialHour,
-  existingSlots,
-  onClose,
-  onCreated,
-}: Props) {
-  function isHourBusy(hour: number) {
-    return existingSlots.some((s) => hour >= s.start_hour && hour < s.end_hour);
-  }
-
-  function maxFreeEnd(startHour: number) {
-    let maxEnd = startHour + 1;
-    for (let h = startHour; h < CLOSE_HOUR; h++) {
-      if (isHourBusy(h)) break;
-      maxEnd = h + 1;
-    }
-    return maxEnd;
-  }
-
-  const [startHour, setStartHour] = useState(initialHour);
-  const [endHour, setEndHour] = useState(initialHour + 1);
+export default function ReservationModal({ date, preselectedHour, onClose, onSuccess }: Props) {
+  const [startHour, setStartHour] = useState(preselectedHour ?? OPEN_HOUR);
+  const [endHour, setEndHour] = useState((preselectedHour ?? OPEN_HOUR) + 1);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
   const [purpose, setPurpose] = useState('');
-  const [recurEnabled, setRecurEnabled] = useState(false);
-  const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('monthly');
-  const [count, setCount] = useState(12);
+  const [recurrence, setRecurrence] = useState<'none' | 'weekly' | 'monthly'>('none');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{
-    created: number;
-    skipped: number;
-    guestEmail: GuestEmailPreview | null;
-  } | null>(null);
 
-  const slots = hourSlots();
-  const currentMaxEnd = maxFreeEnd(startHour);
-  const startOptions = slots
-    .filter((s) => s.start < currentMaxEnd && !isHourBusy(s.start))
-    .map((s) => s.start);
-  const endOptions = slots
-    .map((s) => s.end)
-    .filter((e) => e > startHour && e <= currentMaxEnd);
+  const hours = Array.from({ length: CLOSE_HOUR - OPEN_HOUR }, (_, i) => OPEN_HOUR + i);
 
-  function handleStartChange(newStart: number) {
-    setStartHour(newStart);
-    const newMaxEnd = maxFreeEnd(newStart);
-    if (endHour <= newStart || endHour > newMaxEnd) {
-      setEndHour(newStart + 1);
-    }
-  }
-
-  async function handleSubmit() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     setError('');
-    if (!name.trim() || !phone.trim()) {
-      setError('Vyplňte prosím alespoň jméno a telefon.');
-      return;
-    }
-    if (!purpose.trim()) {
-      setError('Vyplňte prosím účel rezervace.');
-      return;
-    }
-    if (!email.trim()) {
-      setError('Vyplňte prosím e-mail, na který vám zašleme potvrzení rezervace.');
-      return;
-    }
-    if (endHour <= startHour) {
-      setError('Koncová hodina musí být později než počáteční.');
+
+    if (startHour >= endHour) {
+      setError('Čas „Od" musí být dříve než „Do".');
       return;
     }
 
-    setSubmitting(true);
+    setLoading(true);
     try {
       const res = await fetch('/api/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          date: dateKeyStr,
+          date,
           start_hour: startHour,
           end_hour: endHour,
-          name: name.trim(),
-          phone: phone.trim(),
-          email: email.trim(),
-          purpose: purpose.trim(),
-          recurrence: {
-            enabled: recurEnabled,
-            frequency,
-            count,
-          },
+          name,
+          phone,
+          email,
+          address,
+          purpose,
+          recurrence,
         }),
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.error || 'Nepodařilo se vytvořit rezervaci.');
-        setSubmitting(false);
-        return;
+      } else {
+        onSuccess();
       }
-
-      setResult({
-        created: data.created,
-        skipped: data.skipped,
-        guestEmail: {
-          to: email.trim(),
-          subject: `Potvrzení rezervace klubovny Čtyřkoly – ${fmtDateHuman(dateKeyStr)}`,
-          body: `Potvrzení bylo odesláno na ${email.trim()}. Obsahuje datum, čas a účel rezervace.`,
-        },
-      });
     } catch {
-      setError('Nepodařilo se spojit se serverem. Zkuste to prosím znovu.');
+      setError('Nepodařilo se spojit se serverem.');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   }
 
-  if (result) {
-    return (
-      <div className="overlay show">
-        <div className="modal">
-          <h3>Rezervace vytvořena</h3>
-          <div className="sub">
-            {result.created > 1
-              ? `Vytvořeno ${result.created} termínů.`
-              : 'Termín byl úspěšně rezervován.'}
-            {result.skipped > 0 &&
-              ` ${result.skipped} termínů bylo obsazených a bylo vynecháno.`}
-          </div>
-          <div className="email-preview">
-            <div className="email-preview-label">Potvrzení odesláno e-mailem</div>
-            <div className="email-preview-to">Komu: {result.guestEmail?.to}</div>
-            <div className="email-preview-subject">{result.guestEmail?.subject}</div>
-          </div>
-          <div className="hint" style={{ marginTop: 10 }}>
-            Administrátor byl o rezervaci automaticky informován e-mailem.
-          </div>
-          <div className="modal-actions">
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={onCreated}>
-              Zavřít
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Formátování data pro zobrazení
+  const displayDate = new Date(date + 'T00:00:00').toLocaleDateString('cs-CZ', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
-    <div className="overlay show">
-      <div className="modal">
-        <h3>Nová rezervace</h3>
-        <div className="sub">{fmtDateHuman(dateKeyStr)}</div>
-        {error && <div className="error-box show">{error}</div>}
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Zavřít">
+          ✕
+        </button>
+        <h2 className="modal-title">Nová rezervace</h2>
+        <p className="modal-date">{displayDate}</p>
 
-        <div className="field-row">
-          <div className="field">
-            <label htmlFor="rStart">Od</label>
-            <select
-              id="rStart"
-              value={startHour}
-              onChange={(e) => handleStartChange(parseInt(e.target.value, 10))}
-            >
-              {startOptions.map((h) => (
-                <option key={h} value={h}>{pad(h)}:00</option>
-              ))}
-            </select>
+        <form onSubmit={handleSubmit} className="reservation-form">
+          {/* Čas */}
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="startHour">Od</label>
+              <select
+                id="startHour"
+                value={startHour}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setStartHour(v);
+                  if (endHour <= v) setEndHour(v + 1);
+                }}
+                required
+              >
+                {hours.map((h) => (
+                  <option key={h} value={h}>
+                    {String(h).padStart(2, '0')}:00
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="endHour">Do</label>
+              <select
+                id="endHour"
+                value={endHour}
+                onChange={(e) => setEndHour(Number(e.target.value))}
+                required
+              >
+                {Array.from({ length: CLOSE_HOUR - OPEN_HOUR }, (_, i) => OPEN_HOUR + i + 1)
+                  .filter((h) => h > startHour)
+                  .map((h) => (
+                    <option key={h} value={h}>
+                      {String(h).padStart(2, '0')}:00
+                    </option>
+                  ))}
+              </select>
+            </div>
           </div>
-          <div className="field">
-            <label htmlFor="rEnd">Do</label>
-            <select id="rEnd" value={endHour} onChange={(e) => setEndHour(parseInt(e.target.value, 10))}>
-              {endOptions.map((h) => (
-                <option key={h} value={h}>{pad(h)}:00</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="hint" style={{ marginBottom: 14 }}>
-          Lze rezervovat víc hodin najednou, dokud jsou volné.
-        </div>
 
-        <div className="field">
-          <label htmlFor="rName">Jméno a příjmení</label>
-          <input id="rName" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jana Nováková" />
-        </div>
-        <div className="field-row">
-          <div className="field">
-            <label htmlFor="rPhone">Telefon</label>
-            <input id="rPhone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+420 600 000 000" />
-          </div>
-          <div className="field">
-            <label htmlFor="rEmail">E-mail</label>
-            <input id="rEmail" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jana@email.cz" />
-          </div>
-        </div>
-        <div className="field">
-          <label htmlFor="rPurpose">Účel rezervace</label>
-          <input
-            id="rPurpose"
-            value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
-            placeholder="např. oslava, schůze spolku, kroužek..."
-          />
-          <div className="hint">Uveďte, k čemu prostor využijete.</div>
-        </div>
-
-        <div className="recur-box">
-          <div className="checkbox-row">
+          {/* Osobní údaje */}
+          <div className="form-group">
+            <label htmlFor="name">Jméno a příjmení *</label>
             <input
-              type="checkbox"
-              id="rRecur"
-              checked={recurEnabled}
-              onChange={(e) => setRecurEnabled(e.target.checked)}
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Jan Novák"
+              required
             />
-            <label htmlFor="rRecur">Opakovaná rezervace</label>
           </div>
-          {recurEnabled && (
-            <>
-              <div className="field-row">
-                <div className="field">
-                  <label htmlFor="rFreq">Frekvence</label>
-                  <select id="rFreq" value={frequency} onChange={(e) => setFrequency(e.target.value as 'weekly' | 'monthly')}>
-                    <option value="weekly">Každý týden</option>
-                    <option value="monthly">Každý měsíc</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="rCount">Počet opakování</label>
-                  <input
-                    id="rCount"
-                    type="number"
-                    min={2}
-                    max={60}
-                    value={count}
-                    onChange={(e) => setCount(parseInt(e.target.value || '2', 10))}
-                  />
-                </div>
-              </div>
-              <div className="hint">
-                Termíny se vygenerují od vybraného data, max. rok dopředu. Pokud bude některý
-                termín obsazený, ten konkrétní termín se vynechá.
-              </div>
-            </>
-          )}
-        </div>
 
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={onClose} disabled={submitting}>
-            Zrušit
+          <div className="form-group">
+            <label htmlFor="address">Adresa *</label>
+            <input
+              id="address"
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Čtyřkoly 123"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="phone">Telefon *</label>
+            <input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+420 123 456 789"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="email">E-mail *</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="jan.novak@example.com"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="purpose">Účel rezervace *</label>
+            <textarea
+              id="purpose"
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              placeholder="Např. narozeninová oslava, schůze spolku…"
+              rows={3}
+              required
+            />
+          </div>
+
+          {/* Opakování */}
+          <div className="form-group">
+            <label htmlFor="recurrence">Opakování</label>
+            <select
+              id="recurrence"
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value as 'none' | 'weekly' | 'monthly')}
+            >
+              <option value="none">Bez opakování</option>
+              <option value="weekly">Každý týden</option>
+              <option value="monthly">Každý měsíc</option>
+            </select>
+          </div>
+
+          {error && <p className="form-error">{error}</p>}
+
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Odesílám…' : 'Rezervovat'}
           </button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Vytvářím…' : 'Vytvořit rezervaci'}
-          </button>
-        </div>
+        </form>
       </div>
     </div>
   );
