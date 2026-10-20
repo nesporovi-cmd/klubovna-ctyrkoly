@@ -13,7 +13,7 @@ interface Props {
 
 export default function ReservationModal({ dateKeyStr, initialHour, existingSlots, onClose, onCreated }: Props) {
   const [startHour, setStartHour] = useState(initialHour ?? OPEN_HOUR);
-  const [endHour, setEndHour] = useState((preselectedHour ?? OPEN_HOUR) + 1);
+  const [endHour, setEndHour] = useState((initialHour ?? OPEN_HOUR) + 1);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
