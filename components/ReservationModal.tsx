@@ -65,7 +65,6 @@ export default function ReservationModal({ dateKeyStr, initialHour, existingSlot
     }
   }
 
-  // Formátování data pro zobrazení
   const displayDate = new Date(dateKeyStr + 'T00:00:00').toLocaleDateString('cs-CZ', {
     weekday: 'long',
     year: 'numeric',
@@ -74,18 +73,15 @@ export default function ReservationModal({ dateKeyStr, initialHour, existingSlot
   });
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Zavřít">
-          ✕
-        </button>
-        <h2 className="modal-title">Nová rezervace</h2>
-        <p className="modal-date">{displayDate}</p>
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Nová rezervace</h3>
+        <p className="sub">{displayDate}</p>
 
-        <form onSubmit={handleSubmit} className="reservation-form">
+        <form onSubmit={handleSubmit}>
           {/* Čas */}
-          <div className="form-row">
-            <div className="form-group">
+          <div className="field-row">
+            <div className="field">
               <label htmlFor="startHour">Od</label>
               <select
                 id="startHour"
@@ -104,7 +100,7 @@ export default function ReservationModal({ dateKeyStr, initialHour, existingSlot
                 ))}
               </select>
             </div>
-            <div className="form-group">
+            <div className="field">
               <label htmlFor="endHour">Do</label>
               <select
                 id="endHour"
@@ -123,8 +119,7 @@ export default function ReservationModal({ dateKeyStr, initialHour, existingSlot
             </div>
           </div>
 
-          {/* Osobní údaje */}
-          <div className="form-group">
+          <div className="field">
             <label htmlFor="name">Jméno a příjmení *</label>
             <input
               id="name"
@@ -136,7 +131,7 @@ export default function ReservationModal({ dateKeyStr, initialHour, existingSlot
             />
           </div>
 
-          <div className="form-group">
+          <div className="field">
             <label htmlFor="address">Adresa *</label>
             <input
               id="address"
@@ -148,7 +143,7 @@ export default function ReservationModal({ dateKeyStr, initialHour, existingSlot
             />
           </div>
 
-          <div className="form-group">
+          <div className="field">
             <label htmlFor="phone">Telefon *</label>
             <input
               id="phone"
@@ -160,7 +155,7 @@ export default function ReservationModal({ dateKeyStr, initialHour, existingSlot
             />
           </div>
 
-          <div className="form-group">
+          <div className="field">
             <label htmlFor="email">E-mail *</label>
             <input
               id="email"
@@ -172,7 +167,7 @@ export default function ReservationModal({ dateKeyStr, initialHour, existingSlot
             />
           </div>
 
-          <div className="form-group">
+          <div className="field">
             <label htmlFor="purpose">Účel rezervace *</label>
             <textarea
               id="purpose"
@@ -180,29 +175,34 @@ export default function ReservationModal({ dateKeyStr, initialHour, existingSlot
               onChange={(e) => setPurpose(e.target.value)}
               placeholder="Např. narozeninová oslava, schůze spolku…"
               rows={3}
+              style={{ width: '100%', padding: '9px 11px', border: '1.5px solid var(--line-strong)', borderRadius: '8px', fontSize: '14px', background: 'var(--paper)', color: 'var(--ink)', fontFamily: 'inherit', resize: 'vertical' }}
               required
             />
           </div>
 
-          {/* Opakování */}
-          <div className="form-group">
-            <label htmlFor="recurrence">Opakování</label>
-            <select
-              id="recurrence"
-              value={recurrence}
-              onChange={(e) => setRecurrence(e.target.value as 'none' | 'weekly' | 'monthly')}
-            >
-              <option value="none">Bez opakování</option>
-              <option value="weekly">Každý týden</option>
-              <option value="monthly">Každý měsíc</option>
-            </select>
+          <div className="recur-box">
+            <div className="field">
+              <label htmlFor="recurrence">Opakování</label>
+              <select
+                id="recurrence"
+                value={recurrence}
+                onChange={(e) => setRecurrence(e.target.value as 'none' | 'weekly' | 'monthly')}
+              >
+                <option value="none">Bez opakování</option>
+                <option value="weekly">Každý týden</option>
+                <option value="monthly">Každý měsíc</option>
+              </select>
+            </div>
           </div>
 
-          {error && <p className="form-error">{error}</p>}
+          {error && <div className="error-box">{error}</div>}
 
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Odesílám…' : 'Rezervovat'}
-          </button>
+          <div className="modal-actions">
+            <button type="button" className="btn" onClick={onClose}>Zrušit</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Odesílám…' : 'Rezervovat'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
