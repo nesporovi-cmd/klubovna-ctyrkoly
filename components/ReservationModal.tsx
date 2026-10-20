@@ -4,14 +4,15 @@ import { useState } from 'react';
 import { OPEN_HOUR, CLOSE_HOUR } from '@/lib/types';
 
 interface Props {
-  date: string;
-  preselectedHour?: number;
+  dateKeyStr: string;
+  initialHour: number;
+  existingSlots: { start_hour: number; end_hour: number }[];
   onClose: () => void;
-  onSuccess: () => void;
+  onCreated: () => void;
 }
 
-export default function ReservationModal({ date, preselectedHour, onClose, onSuccess }: Props) {
-  const [startHour, setStartHour] = useState(preselectedHour ?? OPEN_HOUR);
+export default function ReservationModal({ dateKeyStr, initialHour, existingSlots, onClose, onCreated }: Props) {
+  const [startHour, setStartHour] = useState(initialHour ?? OPEN_HOUR);
   const [endHour, setEndHour] = useState((preselectedHour ?? OPEN_HOUR) + 1);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -39,7 +40,7 @@ export default function ReservationModal({ date, preselectedHour, onClose, onSuc
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          date,
+          date: dateKeyStr,
           start_hour: startHour,
           end_hour: endHour,
           name,
@@ -55,7 +56,7 @@ export default function ReservationModal({ date, preselectedHour, onClose, onSuc
       if (!res.ok) {
         setError(data.error || 'Nepodařilo se vytvořit rezervaci.');
       } else {
-        onSuccess();
+        onCreated();
       }
     } catch {
       setError('Nepodařilo se spojit se serverem.');
@@ -65,7 +66,7 @@ export default function ReservationModal({ date, preselectedHour, onClose, onSuc
   }
 
   // Formátování data pro zobrazení
-  const displayDate = new Date(date + 'T00:00:00').toLocaleDateString('cs-CZ', {
+  const displayDate = new Date(dateKeyStr + 'T00:00:00').toLocaleDateString('cs-CZ', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
