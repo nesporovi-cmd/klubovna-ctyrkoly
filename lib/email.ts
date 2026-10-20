@@ -113,6 +113,7 @@ Termíny (${reservations.length}×):
 ${listText}
 
 Jméno: ${first.name}
+Adresa: ${first.address}
 Telefon: ${first.phone}
 E-mail: ${first.email}
 Účel rezervace: ${first.purpose}
@@ -122,6 +123,7 @@ Vytvořeno: ${new Date(first.created_at).toLocaleString('cs-CZ')}`
 Datum: ${formatDateHuman(first.date)}
 Čas: ${pad(first.start_hour)}:00–${pad(first.end_hour)}:00
 Jméno: ${first.name}
+Adresa: ${first.address}
 Telefon: ${first.phone}
 E-mail: ${first.email}
 Účel rezervace: ${first.purpose}
@@ -133,6 +135,7 @@ Vytvořeno: ${new Date(first.created_at).toLocaleString('cs-CZ')}`;
 <ul>${listHtml}</ul>
 <table cellpadding="4">
 <tr><td><strong>Jméno</strong></td><td>${escapeHtml(first.name)}</td></tr>
+<tr><td><strong>Adresa</strong></td><td>${escapeHtml(first.address)}</td></tr>
 <tr><td><strong>Telefon</strong></td><td>${escapeHtml(first.phone)}</td></tr>
 <tr><td><strong>E-mail</strong></td><td>${escapeHtml(first.email)}</td></tr>
 <tr><td><strong>Účel rezervace</strong></td><td>${escapeHtml(first.purpose)}</td></tr>
@@ -142,6 +145,7 @@ Vytvořeno: ${new Date(first.created_at).toLocaleString('cs-CZ')}`;
 <tr><td><strong>Datum</strong></td><td>${formatDateHuman(first.date)}</td></tr>
 <tr><td><strong>Čas</strong></td><td>${pad(first.start_hour)}:00–${pad(first.end_hour)}:00</td></tr>
 <tr><td><strong>Jméno</strong></td><td>${escapeHtml(first.name)}</td></tr>
+<tr><td><strong>Adresa</strong></td><td>${escapeHtml(first.address)}</td></tr>
 <tr><td><strong>Telefon</strong></td><td>${escapeHtml(first.phone)}</td></tr>
 <tr><td><strong>E-mail</strong></td><td>${escapeHtml(first.email)}</td></tr>
 <tr><td><strong>Účel rezervace</strong></td><td>${escapeHtml(first.purpose)}</td></tr>
