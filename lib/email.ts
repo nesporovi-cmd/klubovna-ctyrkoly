@@ -14,12 +14,12 @@ function getFromAddress(): string {
   return process.env.EMAIL_FROM || 'onboarding@resend.dev';
 }
 
-function getAdminEmail(): string {
+function getAdminEmails(): string[] {
   const email = process.env.ADMIN_NOTIFICATION_EMAIL;
   if (!email) {
     throw new Error('Chybí ADMIN_NOTIFICATION_EMAIL v proměnných prostředí.');
   }
-  return email;
+  return email.split(',').map((e) => e.trim()).filter(Boolean);
 }
 
 function escapeHtml(s: string): string {
@@ -192,7 +192,7 @@ export async function sendReservationEmails(createdReservations: Reservation[]):
 
   const resend = getResend();
   const from = getFromAddress();
-  const adminEmail = getAdminEmail();
+  const adminEmails = getAdminEmails();
   const first = createdReservations[0];
 
   const guest = buildGuestEmail(createdReservations);
@@ -210,15 +210,17 @@ export async function sendReservationEmails(createdReservations: Reservation[]):
     console.error('Nepodařilo se odeslat e-mail žadateli:', err);
   }
 
-  try {
-    await resend.emails.send({
-      from,
-      to: adminEmail,
-      subject: admin.subject,
-      text: admin.text,
-      html: admin.html,
-    });
-  } catch (err) {
-    console.error('Nepodařilo se odeslat e-mail administrátorovi:', err);
+  for (const adminEmail of adminEmails) {
+    try {
+      await resend.emails.send({
+        from,
+        to: adminEmail,
+        subject: admin.subject,
+        text: admin.text,
+        html: admin.html,
+      });
+    } catch (err) {
+      console.error(`Nepodařilo se odeslat e-mail administrátorovi (${adminEmail}):`, err);
+    }
   }
 }
