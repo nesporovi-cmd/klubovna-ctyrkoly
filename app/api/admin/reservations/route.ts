@@ -6,7 +6,7 @@ import type { Reservation } from '@/lib/types';
 
 // GET – seznam všech rezervací (jen pro admina)
 export async function GET(req: NextRequest) {
-  const session = await getAdminSessionFromCookies(req);
+  const session = await getAdminSessionFromCookies();
   if (!session) {
     return NextResponse.json({ error: 'Nepřihlášen.' }, { status: 401 });
   }
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
 // DELETE – smazání jedné rezervace nebo celé série
 export async function DELETE(req: NextRequest) {
-  const session = await getAdminSessionFromCookies(req);
+  const session = await getAdminSessionFromCookies();
   if (!session) {
     return NextResponse.json({ error: 'Nepřihlášen.' }, { status: 401 });
   }
