@@ -154,6 +154,37 @@ Vytvořeno: ${new Date(first.created_at).toLocaleString('cs-CZ')}`;
   return { subject, text, html };
 }
 
+// E-mail žadateli při zrušení rezervace administrátorem
+export async function sendCancellationEmail(reservation: Reservation): Promise<void> {
+  const resend = getResend();
+  const from = getFromAddress();
+
+  const dateStr = formatDateHuman(reservation.date);
+  const timeStr = `${pad(reservation.start_hour)}:00–${pad(reservation.end_hour)}:00`;
+
+  const subject = `Zrušení rezervace klubovny Čtyřkoly – ${dateStr}`;
+
+  const text = `Dobrý den ${reservation.name},
+
+vaše rezervace klubovny Čtyřkoly na ${dateStr}, ${timeStr} byla zrušena administrátorem.
+
+Pokud máte dotazy, kontaktujte prosím obecní úřad Čtyřkoly.
+
+S pozdravem,
+Obecní úřad Čtyřkoly`;
+
+  const html = `<p>Dobrý den ${escapeHtml(reservation.name)},</p>
+<p>vaše rezervace klubovny Čtyřkoly na <strong>${dateStr}</strong>, <strong>${timeStr}</strong> byla zrušena administrátorem.</p>
+<p>Pokud máte dotazy, kontaktujte prosím obecní úřad Čtyřkoly.</p>
+<p>S pozdravem,<br/>Obecní úřad Čtyřkoly</p>`;
+
+  try {
+    await resend.emails.send({ from, to: reservation.email, subject, text, html });
+  } catch (err) {
+    console.error('Nepodařilo se odeslat e-mail o zrušení:', err);
+  }
+}
+
 // Odešle jeden e-mail žadateli a jeden souhrnný e-mail administrátorovi
 // (bez ohledu na počet termínů v opakované rezervaci).
 export async function sendReservationEmails(createdReservations: Reservation[]): Promise<void> {
